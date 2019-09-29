@@ -1,8 +1,8 @@
-import { Resolver, Query, Mutation, Arg, ObjectType, Field } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, ObjectType, Field, Ctx } from "type-graphql";
 import { User } from "./entity/User";
 import { hash, compare } from "bcryptjs";
-import { sign } from "jsonwebtoken";
-const jwtSecretKey = "test";
+import { GraphQLContext } from "./GraphQLContext";
+import { createRefreshToken, createAccessToken } from "./auth";
 @ObjectType()
 class LoginResponse {
     @Field()
@@ -20,7 +20,11 @@ export class UserResolver {
     }
 
     @Mutation(() => LoginResponse)
-    async login(@Arg("email") email: string, @Arg("password") password: string): Promise<LoginResponse> {
+    async login(
+        @Arg("email") email: string,
+        @Arg("password") password: string,
+        @Ctx() { res }: GraphQLContext
+    ): Promise<LoginResponse> {
         const user = await User.findOne({ where: { email } });
         if (!user) {
             throw new Error("Invalid login!");
@@ -29,7 +33,8 @@ export class UserResolver {
         if (!valid) {
             throw new Error("Invalid login!");
         }
-        const accessToken = sign({ userId: user.id }, jwtSecretKey, { expiresIn: "15m" });
+        res.cookie("id", createRefreshToken(user), { httpOnly: true });
+        const accessToken = createAccessToken(user);
         return { accessToken };
     }
     @Mutation(() => Boolean)

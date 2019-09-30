@@ -1,8 +1,8 @@
-import { Resolver, Query, Mutation, Arg, ObjectType, Field, Ctx } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, ObjectType, Field, Ctx, UseMiddleware } from "type-graphql";
 import { User } from "./entity/User";
 import { hash, compare } from "bcryptjs";
 import { GraphQLContext } from "./GraphQLContext";
-import { createRefreshToken, createAccessToken } from "./auth";
+import { createRefreshToken, createAccessToken, isAuthorized } from "./auth";
 @ObjectType()
 class LoginResponse {
     @Field()
@@ -17,6 +17,11 @@ export class UserResolver {
     @Query(() => [User])
     users() {
         return User.find();
+    }
+    @Query(() => String)
+    @UseMiddleware(isAuthorized)
+    authenticated() {
+        return 'Only seeing this if you\'re authorized!';
     }
 
     @Mutation(() => LoginResponse)
